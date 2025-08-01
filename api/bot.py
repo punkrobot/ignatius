@@ -62,11 +62,7 @@ Respond with valid JSON in this exact format:
     def _format_conversation_for_prompt(self, conversation: Conversation) -> str:
         """Format conversation messages for the AI prompt"""
         try:
-            messages_text = []
-            for msg in conversation.messages:
-                messages_text.append(f"{msg.role}: {msg.text}")
-            
-            return "\n".join(messages_text)
+            return conversation.to_conversation_string()
         except Exception as e:
             logger.error(f"Error formatting conversation: {e}")
             raise BotError(f"Failed to format conversation: {e}")
@@ -135,9 +131,8 @@ Respond with valid JSON in this exact format:
             if "topic" in ai_response and ai_response["topic"]:
                 conversation.topic = ai_response["topic"]
             
-            # Create and add bot message
-            bot_message = Message(role="bot", text=ai_response["text"])
-            conversation.messages = conversation.messages + [bot_message]
+            # Add bot message to conversation using the model method
+            conversation.add_message("bot", ai_response["text"])
             
             logger.info("Successfully generated bot response for conversation")
             return conversation

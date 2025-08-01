@@ -40,7 +40,7 @@ def chat():
         conversation = ConversationService.save_conversation(conversation)
 
         return jsonify({
-            "id": str(conversation.id),
+            "conversation_id": str(conversation.id),
             "topic": conversation.topic,
             "messages": [
                 {"role": msg.role, "text": msg.text} 
