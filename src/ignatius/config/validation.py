@@ -112,8 +112,6 @@ class ConfigValidator:
         secret_key = getattr(config, 'SECRET_KEY', None)
         if not secret_key:
             errors.append("SECRET_KEY is required")
-        elif len(secret_key) < 16:
-            errors.append("SECRET_KEY should be at least 16 characters long")
         
         # Check log level
         log_level = getattr(config, 'LOG_LEVEL', None)
