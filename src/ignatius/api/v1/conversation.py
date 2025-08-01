@@ -1,14 +1,21 @@
 import logging
 from flask import Blueprint, jsonify, request
 from mongoengine import ValidationError
-from .bot import DebateBotService, BotError, OpenAIError, ResponseParsingError
-from .db import ConversationService, ConversationNotFoundError
+from ...services.ai_service import AIService
+from ...services.conversation_service import ConversationService
+from ...services.exceptions import (
+    ConversationNotFoundError, 
+    BotError, 
+    OpenAIError, 
+    ResponseParsingError
+)
 
 logger = logging.getLogger(__name__)
-bp = Blueprint('api', __name__)
+conversation_bp = Blueprint('conversation', __name__)
 
-@bp.route('/chat', methods=['POST'])
-def chat():
+@conversation_bp.route('/conversations', methods=['POST'])
+def create_conversation():
+    """Create a new conversation or continue an existing one"""
     try:
         # Validate request data
         if not request.is_json:
@@ -25,19 +32,20 @@ def chat():
         conversation_id = params.get("conversation_id")
         
         # Create or retrieve conversation
+        conversation_service = ConversationService()
         if conversation_id is None:
-            conversation = ConversationService.create_conversation(message)
+            conversation = conversation_service.create_conversation(message)
             logger.info("Created new conversation")
         else:
-            conversation = ConversationService.get_conversation(conversation_id, message)
+            conversation = conversation_service.get_conversation(conversation_id, message)
             logger.info(f"Retrieved existing conversation {conversation_id}")
 
-        # Generate bot response
-        bot = DebateBotService()
-        conversation = bot.respond(conversation)
+        # Generate AI response
+        ai_service = AIService()
+        conversation = ai_service.generate_debate_response(conversation)
 
         # Save conversation
-        conversation = ConversationService.save_conversation(conversation)
+        conversation = conversation_service.save_conversation(conversation)
 
         return jsonify({
             "conversation_id": str(conversation.id),
@@ -61,7 +69,7 @@ def chat():
         return jsonify({"error": "Invalid data provided"}), 400
         
     except BotError as e:
-        logger.error(f"Bot service error: {e}")
+        logger.error(f"AI service error: {e}")
         return jsonify({"error": "Failed to generate response"}), 500
         
     except OpenAIError as e:
@@ -73,13 +81,33 @@ def chat():
         return jsonify({"error": "Invalid AI response format"}), 500
         
     except Exception as e:
-        logger.error(f"Unexpected error in chat endpoint: {e}")
+        logger.error(f"Unexpected error in conversation endpoint: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
-@bp.errorhandler(404)
+@conversation_bp.route('/conversations/<conversation_id>', methods=['GET'])
+def get_conversation(conversation_id):
+    """Get a conversation by ID"""
+    try:
+        conversation_service = ConversationService()
+        conversation = conversation_service.get_conversation(conversation_id)
+        return jsonify(conversation.to_dict())
+        
+    except ConversationNotFoundError as e:
+        logger.warning(f"Conversation not found: {e}")
+        return jsonify({"error": str(e)}), 404
+        
+    except ValueError as e:
+        logger.warning(f"Validation error: {e}")
+        return jsonify({"error": str(e)}), 400
+        
+    except Exception as e:
+        logger.error(f"Unexpected error retrieving conversation: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+@conversation_bp.errorhandler(404)
 def not_found(error):
     return jsonify({"error": "Endpoint not found"}), 404
 
-@bp.errorhandler(405)
+@conversation_bp.errorhandler(405)
 def method_not_allowed(error):
     return jsonify({"error": "Method not allowed"}), 405

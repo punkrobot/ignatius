@@ -1,19 +1,20 @@
 import logging
+from typing import Optional
 from bson import ObjectId
 from mongoengine import DoesNotExist, ValidationError
-from .models import Conversation, Message
+from ..models.conversation import Conversation
+from ..database.repositories import ConversationRepository, RepositoryError
+from .exceptions import ConversationNotFoundError
 
 logger = logging.getLogger(__name__)
 
-class ConversationNotFoundError(Exception):
-    """Raised when a conversation cannot be found"""
-    pass
-
 class ConversationService:
-    """Service class for handling conversation database operations"""
+    """Service class for handling conversation business logic"""
     
-    @staticmethod
-    def create_conversation(message: str, topic: str = None) -> Conversation:
+    def __init__(self):
+        self.repository = ConversationRepository()
+    
+    def create_conversation(self, message: str, topic: str = None) -> Conversation:
         """
         Create a new conversation with an initial user message.
         
@@ -32,23 +33,18 @@ class ConversationService:
             raise ValueError("Message cannot be empty")
             
         try:
-            user_message = Message(role="user", text=message.strip())
-            conversation = Conversation(
-                topic=topic or "General Discussion",
-                messages=[user_message]
-            )
+            conversation = self.repository.create_conversation(topic, message)
             logger.info("Created new conversation")
             return conversation
             
-        except ValidationError as e:
-            logger.error(f"Validation error creating conversation: {e}")
-            raise
+        except RepositoryError as e:
+            logger.error(f"Repository error creating conversation: {e}")
+            raise ValidationError(str(e))
         except Exception as e:
             logger.error(f"Error creating conversation: {e}")
             raise
     
-    @staticmethod
-    def get_conversation(conversation_id: str, new_message: str = None) -> Conversation:
+    def get_conversation(self, conversation_id: str, new_message: str = None) -> Conversation:
         """
         Retrieve a conversation by ID and optionally add a new message.
         
@@ -72,14 +68,13 @@ class ConversationService:
             if not ObjectId.is_valid(conversation_id):
                 raise ValueError("Invalid conversation ID format")
                 
-            conversation = Conversation.objects(id=conversation_id).first()
+            conversation = self.repository.get_conversation(conversation_id)
             if not conversation:
                 raise ConversationNotFoundError(f"Conversation with ID {conversation_id} not found")
             
             # Add new message if provided
             if new_message and new_message.strip():
-                user_message = Message(role="user", text=new_message.strip())
-                conversation.messages = conversation.messages + [user_message]
+                conversation.add_message("user", new_message)
                 logger.info(f"Added new message to conversation {conversation_id}")
             
             return conversation
@@ -94,8 +89,7 @@ class ConversationService:
             logger.error(f"Error retrieving conversation {conversation_id}: {e}")
             raise
     
-    @staticmethod
-    def save_conversation(conversation: Conversation) -> Conversation:
+    def save_conversation(self, conversation: Conversation) -> Conversation:
         """
         Save a conversation to the database.
         
@@ -109,13 +103,13 @@ class ConversationService:
             ValidationError: If the conversation data is invalid
         """
         try:
-            conversation.save()
+            saved_conversation = self.repository.save_conversation(conversation)
             logger.info(f"Saved conversation {conversation.id}")
-            return conversation
+            return saved_conversation
             
-        except ValidationError as e:
-            logger.error(f"Validation error saving conversation: {e}")
-            raise
+        except RepositoryError as e:
+            logger.error(f"Repository error saving conversation: {e}")
+            raise ValidationError(str(e))
         except Exception as e:
             logger.error(f"Error saving conversation: {e}")
             raise

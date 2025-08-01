@@ -4,26 +4,16 @@ import os
 from typing import Optional, Dict, Any
 from string import Template
 from openai import OpenAI
-from .models import Conversation, Message
+from flask import current_app
+from ..models.conversation import Conversation
+from .exceptions import BotError, OpenAIError, ResponseParsingError
 
 logger = logging.getLogger(__name__)
 
-class BotError(Exception):
-    """Base exception for bot-related errors"""
-    pass
-
-class OpenAIError(BotError):
-    """Raised when OpenAI API calls fail"""
-    pass
-
-class ResponseParsingError(BotError):
-    """Raised when bot response cannot be parsed"""
-    pass
-
-class DebateBotService:
-    """Service for generating debate responses using OpenAI"""
+class AIService:
+    """Service for generating AI responses using OpenAI"""
     
-    _instance: Optional['DebateBotService'] = None
+    _instance: Optional['AIService'] = None
     _client: Optional[OpenAI] = None
     
     DEFAULT_PROMPT_TEMPLATE = Template("""You are an expert debater. Analyze the following conversation and generate a response that takes the opposite viewpoint.
@@ -43,18 +33,19 @@ Respond with valid JSON in this exact format:
     "text": "your debate response"
 }""")
     
-    def __new__(cls) -> 'DebateBotService':
+    def __new__(cls) -> 'AIService':
         """Singleton pattern to reuse OpenAI client"""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
     
     def __init__(self):
-        """Initialize the bot service with OpenAI client"""
+        """Initialize the AI service with OpenAI client"""
         if self._client is None:
-            api_key = os.getenv('OPENAI_API_KEY')
+            # Get configuration from Flask app context
+            api_key = current_app.config.get('OPENAI_API_KEY')
             if not api_key:
-                raise ValueError("OPENAI_API_KEY environment variable is required")
+                raise ValueError("OPENAI_API_KEY configuration is required")
             
             self._client = OpenAI(api_key=api_key)
             logger.info("Initialized OpenAI client")
@@ -70,14 +61,19 @@ Respond with valid JSON in this exact format:
     def _generate_response(self, prompt: str) -> Dict[str, Any]:
         """Generate response from OpenAI API"""
         try:
+            # Get OpenAI settings from configuration
+            model = current_app.config.get('OPENAI_MODEL', 'gpt-4o-mini')
+            temperature = current_app.config.get('OPENAI_TEMPERATURE', 0.7)
+            max_tokens = current_app.config.get('OPENAI_MAX_TOKENS', 500)
+            
             response = self._client.chat.completions.create(
-                model="gpt-4o-mini",
+                model=model,
                 messages=[
                     {"role": "system", "content": "You are a helpful debate assistant that responds only in valid JSON format."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.7,
-                max_tokens=500
+                temperature=temperature,
+                max_tokens=max_tokens
             )
             
             response_text = response.choices[0].message.content
@@ -94,7 +90,7 @@ Respond with valid JSON in this exact format:
             logger.error(f"OpenAI API error: {e}")
             raise OpenAIError(f"Failed to generate response: {e}")
     
-    def respond(self, conversation: Conversation, prompt_template: Optional[Template] = None) -> Conversation:
+    def generate_debate_response(self, conversation: Conversation, prompt_template: Optional[Template] = None) -> Conversation:
         """
         Generate a debate response for the given conversation.
         
@@ -134,12 +130,13 @@ Respond with valid JSON in this exact format:
             # Add bot message to conversation using the model method
             conversation.add_message("bot", ai_response["text"])
             
-            logger.info("Successfully generated bot response for conversation")
+            logger.info("Successfully generated AI response for conversation")
             return conversation
             
         except (BotError, ValueError):
             # Re-raise known exceptions
             raise
         except Exception as e:
-            logger.error(f"Unexpected error in bot response generation: {e}")
-            raise BotError(f"Failed to generate bot response: {e}")
+            logger.error(f"Unexpected error in AI response generation: {e}")
+            raise BotError(f"Failed to generate AI response: {e}")
+
