@@ -1,10 +1,9 @@
 import os
 from dotenv import load_dotenv
 
-from .bot import Bot
-from .db import DB
-from flask import Flask, jsonify, request
+from flask import Flask
 from flask_mongoengine import MongoEngine
+from .routes import bp
 
 load_dotenv()
 
@@ -40,19 +39,7 @@ def create_app(test_config=None):
     except OSError:
         pass
 
-    @app.route('/chat', methods=['POST'])
-    def chat():
-        params = request.get_json(force=True)
-
-        if params["conversation_id"] == None:
-            c = DB().createConversation(params["message"])
-        else: 
-            c = DB().getConversation(params["conversation_id"], params["message"])
-
-        conversation = Bot().respond(c)
-
-        conversation.save()
-
-        return jsonify(conversation)
+    # Register blueprints
+    app.register_blueprint(bp)
 
     return app
