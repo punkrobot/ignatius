@@ -1,7 +1,7 @@
 import logging
 from flask import Blueprint, jsonify, request
 from mongoengine import ValidationError
-from .bot import Bot
+from .bot import DebateBotService, BotError, OpenAIError, ResponseParsingError
 from .db import ConversationService, ConversationNotFoundError
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ def chat():
             logger.info(f"Retrieved existing conversation {conversation_id}")
 
         # Generate bot response
-        bot = Bot()
+        bot = DebateBotService()
         conversation = bot.respond(conversation)
 
         # Save conversation
@@ -59,6 +59,18 @@ def chat():
     except ValidationError as e:
         logger.error(f"Database validation error: {e}")
         return jsonify({"error": "Invalid data provided"}), 400
+        
+    except BotError as e:
+        logger.error(f"Bot service error: {e}")
+        return jsonify({"error": "Failed to generate response"}), 500
+        
+    except OpenAIError as e:
+        logger.error(f"OpenAI API error: {e}")
+        return jsonify({"error": "AI service temporarily unavailable"}), 503
+        
+    except ResponseParsingError as e:
+        logger.error(f"Response parsing error: {e}")
+        return jsonify({"error": "Invalid AI response format"}), 500
         
     except Exception as e:
         logger.error(f"Unexpected error in chat endpoint: {e}")
