@@ -3,6 +3,7 @@ import logging
 from dotenv import load_dotenv
 from flask import Flask
 from flask_mongoengine import MongoEngine
+from flask_cors import CORS
 from .api.v1.conversation import conversation_bp
 from .config import ConfigFactory
 
@@ -42,6 +43,9 @@ def create_app(config_name=None, test_config=None):
     # Initialize MongoDB
     db = MongoEngine()
     db.init_app(app)
+    
+    # Enable CORS for all domains and routes
+    CORS(app)
 
     # Ensure instance path exists
     try:

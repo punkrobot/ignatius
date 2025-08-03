@@ -6,7 +6,7 @@ help:
 	@echo "  make help     - Show this help message"
 	@echo "  make install  - Install all requirements to run the service"
 	@echo "  make test     - Run tests"
-	@echo "  make run      - Run the service and all related services in Docker"
+	@echo "  make run      - Run the service and webapp with Docker (API: :5001, Web: :8080)"
 	@echo "  make down     - Teardown all running services"
 	@echo "  make clean    - Teardown and remove all containers"
 
@@ -34,6 +34,8 @@ test:
 # Run the service and all related services in Docker
 run:
 	@echo "Starting services with Docker Compose..."
+	@echo "API will be available at: http://localhost:5001"
+	@echo "Webapp will be available at: http://localhost:8080"
 	@docker compose up --build
 
 # Teardown all running services

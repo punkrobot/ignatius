@@ -1,0 +1,6 @@
+server.py
+README.md
+.git
+.gitignore
+node_modules
+*.log

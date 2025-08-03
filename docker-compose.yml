@@ -13,6 +13,17 @@ services:
     networks:
       - ignatius-network
 
+  webapp:
+    build: ./webapp
+    ports:
+      - "8080:80"
+    environment:
+      - API_BASE_URL=http://localhost:5001/api/v1
+    depends_on:
+      - app
+    networks:
+      - ignatius-network
+
   mongodb:
     image: mongo:7
     ports:

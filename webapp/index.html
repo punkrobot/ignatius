@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ignatius - Chat Bot</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Ignatius</h1>
+            <p class="subtitle">A very opinionated chat bot</p>
+        </header>
+
+        <div class="chat-container">
+            <div class="chat-messages" id="chatMessages">
+                <div class="welcome-message">
+                    <div class="message bot-message">
+                        <div class="message-content">
+                            <p>Start a conversation by typing a message below.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-input-container">
+                <div class="input-group">
+                    <input type="text" id="messageInput" placeholder="Type your message here..." maxlength="500"
+                        disabled>
+                    <button id="sendButton" disabled>Send</button>
+                </div>
+                <div class="status-bar">
+                    <span id="statusText">Connecting to API...</span>
+                    <div class="connection-indicator" id="connectionIndicator"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="conversation-info" id="conversationInfo" style="display: none;">
+            <div class="info-item">
+                <strong>Conversation ID:</strong>
+                <span id="conversationId">-</span>
+            </div>
+            <div class="info-item">
+                <strong>Topic:</strong>
+                <span id="conversationTopic">-</span>
+            </div>
+            <button id="newConversationBtn" class="secondary-btn">Start New Conversation</button>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
