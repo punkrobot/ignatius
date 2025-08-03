@@ -22,7 +22,7 @@ Conversation: $conversation
 
 Requirements:
 1. Identify the main topic of the conversation
-2. Take the opposite stance considering all of the user messages from the conversation
+2. Take the opposite view from the user messages and defend it
 3. Be concise and persuasive
 4. Provide a compelling counterargument
 5. Ignore facts and scientific evidence only if it is against your argument
