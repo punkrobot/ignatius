@@ -1,8 +1,10 @@
 import json
 import logging
 import os
+import yaml
 from typing import Optional, Dict, Any
 from string import Template
+from pathlib import Path
 from openai import OpenAI
 from flask import current_app
 from ..models.conversation import Conversation
@@ -15,23 +17,7 @@ class AIService:
     
     _instance: Optional['AIService'] = None
     _client: Optional[OpenAI] = None
-    
-    DEFAULT_PROMPT_TEMPLATE = Template("""You are an expert debater. Analyze the following conversation and generate a response that takes the opposite viewpoint.
-
-Conversation: $conversation
-
-Requirements:
-1. Identify the main topic of the conversation
-2. Take the opposite view from the user messages and defend it
-3. Be concise and persuasive
-4. Provide a compelling counterargument
-5. Ignore facts and scientific evidence only if it is against your argument
-
-Respond with valid JSON in this exact format:
-{
-    "topic": "identified topic",
-    "text": "your debate response"
-}""")
+    _prompts: Optional[Dict[str, Dict[str, str]]] = None
     
     def __new__(cls) -> 'AIService':
         """Singleton pattern to reuse OpenAI client"""
@@ -49,6 +35,33 @@ Respond with valid JSON in this exact format:
             
             self._client = OpenAI(api_key=api_key)
             logger.info("Initialized OpenAI client")
+        
+        # Load prompts if not already loaded
+        if self._prompts is None:
+            self._load_prompts()
+    
+    def _load_prompts(self) -> None:
+        """Load prompts from configuration file"""
+        try:
+            prompts_path = current_app.config.get('PROMPTS_FILE_PATH', 
+                                                Path(__file__).parent.parent / 'config' / 'prompts.yaml')
+            
+            with open(prompts_path, 'r') as f:
+                self._prompts = yaml.safe_load(f)
+            
+            logger.info(f"Loaded prompts from {prompts_path}")
+        except Exception as e:
+            logger.error(f"Failed to load prompts: {e}")
+            raise BotError(f"Failed to load prompts: {e}")
+    
+    def get_prompt_template(self, prompt_type: str = 'debate', style: str = 'default') -> Template:
+        """Get a prompt template by type and style"""
+        try:
+            prompt_text = self._prompts[prompt_type][style]
+            return Template(prompt_text)
+        except KeyError:
+            logger.warning(f"Prompt not found for type '{prompt_type}' and style '{style}', using default")
+            return Template(self._prompts['debate']['default'])
     
     def _format_conversation_for_prompt(self, conversation: Conversation) -> str:
         """Format conversation messages for the AI prompt"""
@@ -69,7 +82,7 @@ Respond with valid JSON in this exact format:
             response = self._client.chat.completions.create(
                 model=model,
                 messages=[
-                    {"role": "system", "content": "You are a helpful debate assistant that responds only in valid JSON format."},
+                    {"role": "system", "content": "You are a debate chat bot that responds only in valid JSON format."},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=temperature,
@@ -90,13 +103,16 @@ Respond with valid JSON in this exact format:
             logger.error(f"OpenAI API error: {e}")
             raise OpenAIError(f"Failed to generate response: {e}")
     
-    def generate_debate_response(self, conversation: Conversation, prompt_template: Optional[Template] = None) -> Conversation:
+    def generate_debate_response(self, conversation: Conversation, prompt_template: Optional[Template] = None, 
+                                prompt_type: str = 'debate', style: str = 'default') -> Conversation:
         """
         Generate a debate response for the given conversation.
         
         Args:
             conversation: The conversation to respond to
             prompt_template: Optional custom prompt template
+            prompt_type: Type of prompt to use (default: 'debate')
+            style: Style of prompt to use (default: 'default')
             
         Returns:
             Conversation: Updated conversation with bot response
@@ -109,12 +125,12 @@ Respond with valid JSON in this exact format:
             raise ValueError("Conversation must have at least one message")
         
         try:
-            # Use custom template or default
-            template = prompt_template or self.DEFAULT_PROMPT_TEMPLATE
+            # Use custom template or load from configuration
+            template = prompt_template or self.get_prompt_template(prompt_type, style)
             
             # Format conversation for prompt
             conversation_text = self._format_conversation_for_prompt(conversation)
-            prompt = template.substitute(conversation=conversation_text)
+            prompt = template.substitute(conversation=conversation_text, topic=conversation.topic)
             
             # Generate AI response
             ai_response = self._generate_response(prompt)

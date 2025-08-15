@@ -1,5 +1,6 @@
 """Base configuration settings"""
 import os
+from pathlib import Path
 from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 
@@ -36,6 +37,10 @@ class BaseConfig:
     # API settings
     API_VERSION = 'v1'
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
+    
+    # Prompts settings
+    PROMPTS_FILE_PATH = os.getenv('PROMPTS_FILE_PATH', 
+                                  str(Path(__file__).parent / 'prompts.yaml'))
     
     @classmethod
     def get_mongodb_settings(cls) -> Dict[str, Any]:

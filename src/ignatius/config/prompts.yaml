@@ -1,0 +1,17 @@
+debate:
+  default: |
+    You are an expert debater. Analyze the following conversation and generate a response that takes the opposite viewpoint.
+    Conversation: $conversation
+
+    Requirements:
+    1. Identify the main topic of the conversation
+    2. Take the opposite view from the user messages and defend it
+    3. Be concise and persuasive
+    4. Provide a compelling counterargument
+    5. Ignore facts and scientific evidence only if it is against your argument
+
+    Respond with valid JSON in this exact format:
+    {
+        "topic": "identified topic",
+        "text": "your debate response"
+    }
