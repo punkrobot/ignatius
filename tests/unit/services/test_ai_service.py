@@ -341,3 +341,37 @@ class TestAIService:
             mock_generate.assert_called_once()
             call_args = mock_generate.call_args[0][0]
             assert "Default:" in call_args
+    
+    @patch('ignatius.services.ai_service.yaml.safe_load')
+    @patch('builtins.open', new_callable=mock_open)
+    @patch('ignatius.services.ai_service.OpenAI')
+    def test_generate_debate_response_with_viewpoint(self, mock_openai_class, mock_file, mock_yaml, app_context):
+        """Test debate response generation updates viewpoint"""
+        mock_prompts = {
+            'debate': {
+                'default': 'Test prompt: $conversation'
+            }
+        }
+        mock_yaml.return_value = mock_prompts
+        
+        service = AIService()
+        
+        mock_conversation = Mock(spec=Conversation)
+        mock_conversation.messages = [Mock()]
+        mock_conversation.to_conversation_string.return_value = "user: Hello"
+        
+        with patch.object(service, '_generate_response') as mock_generate:
+            mock_generate.return_value = {
+                "topic": "Test Topic", 
+                "text": "AI response",
+                "viewpoint": "Pro-AI position"
+            }
+            
+            result = service.generate_debate_response(mock_conversation)
+            
+            # Verify topic and viewpoint were updated
+            assert mock_conversation.topic == "Test Topic"
+            assert mock_conversation.viewpoint == "Pro-AI position"
+            
+            # Verify message was added
+            mock_conversation.add_message.assert_called_once_with("bot", "AI response")

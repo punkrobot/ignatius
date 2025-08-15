@@ -130,7 +130,7 @@ class AIService:
             
             # Format conversation for prompt
             conversation_text = self._format_conversation_for_prompt(conversation)
-            prompt = template.substitute(conversation=conversation_text, topic=conversation.topic)
+            prompt = template.substitute(conversation=conversation_text, topic=conversation.topic, viewpoint=conversation.viewpoint)
             
             # Generate AI response
             ai_response = self._generate_response(prompt)
@@ -142,6 +142,10 @@ class AIService:
             # Update conversation topic if provided
             if "topic" in ai_response and ai_response["topic"]:
                 conversation.topic = ai_response["topic"]
+            
+            # Update conversation viewpoint if provided
+            if "viewpoint" in ai_response and ai_response["viewpoint"]:
+                conversation.viewpoint = ai_response["viewpoint"]
             
             # Add bot message to conversation using the model method
             conversation.add_message("bot", ai_response["text"])

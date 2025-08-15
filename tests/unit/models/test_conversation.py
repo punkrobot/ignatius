@@ -195,3 +195,38 @@ class TestConversation:
         with pytest.raises(ValidationError):
             conversation = Conversation(topic=None)
             conversation.validate()
+    
+    def test_viewpoint_validation_whitespace_stripping(self):
+        """Test conversation viewpoint whitespace is stripped"""
+        message = Message(role="user", text="Hello")
+        conversation = Conversation(
+            messages=[message], 
+            topic="Test topic",
+            viewpoint="  Pro-test viewpoint  "
+        )
+        
+        conversation.clean()
+        assert conversation.viewpoint == "Pro-test viewpoint"
+    
+    def test_viewpoint_validation_none(self):
+        """Test conversation with None viewpoint"""
+        message = Message(role="user", text="Hello")
+        conversation = Conversation(messages=[message], viewpoint=None)
+        
+        # Should not raise any validation errors
+        conversation.clean()
+        assert conversation.viewpoint is None
+    
+    def test_to_dict_includes_viewpoint(self):
+        """Test conversation to_dict includes viewpoint"""
+        message = Message(role="user", text="Hello")
+        conversation = Conversation(
+            messages=[message], 
+            topic="Test topic",
+            viewpoint="Pro-test"
+        )
+        
+        result = conversation.to_dict()
+        
+        assert 'viewpoint' in result
+        assert result['viewpoint'] == "Pro-test"

@@ -13,6 +13,10 @@ class Conversation(me.Document):
         max_length=MAX_TOPIC_LENGTH,
         help_text="Topic/subject of the conversation"
     )
+    viewpoint = me.StringField(
+        max_length=MAX_TOPIC_LENGTH,
+        help_text="Bot's viewpoint/side of the debate"
+    )
     messages = me.EmbeddedDocumentListField(
         Message,
         required=True,
@@ -41,6 +45,9 @@ class Conversation(me.Document):
         """Custom validation for the conversation"""
         if self.topic is not None:
             self.topic = self.topic.strip()
+        
+        if self.viewpoint is not None:
+            self.viewpoint = self.viewpoint.strip()
         
         if not self.messages:
             raise ValidationError("Conversation must have at least one message")
@@ -92,6 +99,7 @@ class Conversation(me.Document):
         return {
             'id': str(self.id),
             'topic': self.topic,
+            'viewpoint': self.viewpoint,
             'messages': [msg.to_dict() for msg in self.messages],
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
@@ -105,4 +113,4 @@ class Conversation(me.Document):
         return "\n".join(lines)
     
     def __str__(self):
-        return f"Conversation(topic='{self.topic}', messages={len(self.messages)})"
+        return f"Conversation(topic='{self.topic}', viewpoint='{self.viewpoint}', messages={len(self.messages)})"
